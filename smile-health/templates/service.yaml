@@ -1,0 +1,45 @@
+{{- range $key, $service := .Values.backend }}
+{{- if $service.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smile-health.fullname" $ }}-{{ $key }}
+  labels:
+    {{- include "smile-health.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $key }}
+spec:
+  type: {{ $service.service.type }}
+  ports:
+    - port: {{ $service.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "smile-health.selectorLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $key }}
+{{- end }}
+{{- end }}
+
+{{- range $key, $service := .Values.frontend }}
+{{- if $service.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smile-health.fullname" $ }}-{{ $key }}
+  labels:
+    {{- include "smile-health.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $key }}
+spec:
+  type: {{ $service.service.type }}
+  ports:
+    - port: {{ $service.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "smile-health.selectorLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $key }}
+{{- end }}
+{{- end }}

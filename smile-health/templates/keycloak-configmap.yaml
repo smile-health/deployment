@@ -1,0 +1,166 @@
+{{- if .Values.keycloak.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "smile-health.fullname" . }}-keycloak-realm
+  labels:
+    {{- include "smile-health.labels" . | nindent 4 }}
+    app.kubernetes.io/component: keycloak
+data:
+  realm.json: |
+    {
+      "id": "smile-health",
+      "realm": "smile-health",
+      "displayName": "Smile Health",
+      "enabled": true,
+      "registrationAllowed": true,
+      "loginWithEmailAllowed": true,
+      "duplicateEmailsAllowed": false,
+      "resetPasswordAllowed": true,
+      "editUsernameAllowed": false,
+      "bruteForceProtected": true,
+      "permanentLockout": false,
+      "maxFailureWaitSeconds": 900,
+      "minimumQuickLoginWaitSeconds": 60,
+      "waitIncrementSeconds": 60,
+      "quickLoginCheckMilliSeconds": 1000,
+      "maxDeltaTimeSeconds": 43200,
+      "failureFactor": 30,
+      "roles": {
+        "client": {
+          "account": [
+            {
+              "id": "view-profile",
+              "name": "${role_view-profile}",
+              "description": "${role_view-profile}",
+              "composite": false,
+              "clientRole": true,
+              "containerId": "account"
+            },
+            {
+              "id": "manage-account",
+              "name": "${role_manage-account}",
+              "description": "${role_manage-account}",
+              "composite": true,
+              "composites": {
+                "client": {
+                  "account": ["view-profile"]
+                }
+              },
+              "clientRole": true,
+              "containerId": "account"
+            }
+          ]
+        },
+        "realm": [
+          {
+            "id": "admin",
+            "name": "admin",
+            "description": "Administrator role",
+            "composite": false,
+            "clientRole": false,
+            "containerId": "smile-health"
+          },
+          {
+            "id": "doctor",
+            "name": "doctor",
+            "description": "Doctor role",
+            "composite": false,
+            "clientRole": false,
+            "containerId": "smile-health"
+          },
+          {
+            "id": "nurse",
+            "name": "nurse",
+            "description": "Nurse role",
+            "composite": false,
+            "clientRole": false,
+            "containerId": "smile-health"
+          },
+          {
+            "id": "patient",
+            "name": "patient",
+            "description": "Patient role",
+            "composite": false,
+            "clientRole": false,
+            "containerId": "smile-health"
+          }
+        ]
+      },
+      "users": [
+        {
+          "id": "admin-user",
+          "createdTimestamp": 1640995200000,
+          "username": "admin@smile-health.com",
+          "enabled": true,
+          "totp": false,
+          "emailVerified": true,
+          "firstName": "Admin",
+          "lastName": "User",
+          "email": "admin@smile-health.com",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "admin123",
+              "temporary": false
+            }
+          ],
+          "requiredActions": [],
+          "realmRoles": ["admin"],
+          "clientRoles": {
+            "account": ["manage-account", "view-profile"]
+          }
+        }
+      ],
+      "clients": [
+        {
+          "clientId": "smile-health-backend",
+          "name": "Smile Health Backend",
+          "description": "Backend API client",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "your-backend-secret-here",
+          "redirectUris": ["http://localhost:3000/*", "https://smile-health.example.com/*"],
+          "webOrigins": ["http://localhost:3000", "https://smile-health.example.com"],
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": true,
+          "authorizationServicesEnabled": true,
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": true,
+          "fullScopeAllowed": false
+        },
+        {
+          "clientId": "smile-health-frontend",
+          "name": "Smile Health Frontend",
+          "description": "Frontend web client",
+          "enabled": true,
+          "clientAuthenticatorType": "public",
+          "redirectUris": ["http://localhost:7500/*", "https://smile-health.example.com/*"],
+          "webOrigins": ["http://localhost:7500", "https://smile-health.example.com"],
+          "protocol": "openid-connect",
+          "publicClient": true,
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": true,
+          "fullScopeAllowed": false
+        }
+      ],
+      "identityProviders": [],
+      "browserSecurityHeaders": {
+        "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+        "contentSecurityPolicyReportOnly": "",
+        "xContentTypeOptions": "nosniff",
+        "xRobotsTag": "none",
+        "xFrameOptions": "DENY",
+        "xXSSProtection": "1; mode=block",
+        "strictTransportSecurity": "max-age=31536000; includeSubDomains"
+      },
+      "internationalizationEnabled": true,
+      "supportedLocales": ["en", "id"],
+      "defaultLocale": "en"
+    }
+{{- end }}
