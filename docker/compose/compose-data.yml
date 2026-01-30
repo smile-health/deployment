@@ -1,0 +1,103 @@
+services:
+  zookeeper:
+    container_name: zookeeper
+    image: confluentinc/cp-zookeeper:7.5.0
+    restart: always
+    ports:
+      - "4181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - ../volumes/zookeeper:/var/lib/zookeeper/data
+      - ../volumes/zookeeper-logs:/var/lib/zookeeper/log
+    networks:
+      - smile-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  kafka:
+    container_name: kafka
+    image: confluentinc/cp-kafka:7.5.0
+    restart: always
+    ports:
+      - "4092:9092"
+      - "4093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - ../volumes/kafka:/var/lib/kafka/data
+    networks:
+      - smile-network
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  clickhouse:
+    container_name: clickhouse
+    image: clickhouse/clickhouse-server:23.8
+    restart: always
+    ports:
+      - "4123:8123"
+      - "4900:9000"
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-default}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    volumes:
+      - ../volumes/clickhouse:/var/lib/clickhouse
+      - ../volumes/clickhouse-logs:/var/log/clickhouse-server
+    networks:
+      - smile-network
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  risingwave:
+    container_name: risingwave
+    image: risingwavelabs/risingwave:latest
+    restart: always
+    ports:
+      - "4566:4566"
+      - "4691:5691"
+    environment:
+      RUST_BACKTRACE: "1"
+    command: standalone --meta-opts=" --listen-addr 0.0.0.0:5690 --advertise-addr 0.0.0.0:5690 --dashboard-host 0.0.0.0:5691 --prometheus-host 0.0.0.0:1250 --backend mem --state-store hummock+memory --data-directory hummock_001 --config-path /risingwave.toml" --compute-opts=" --listen-addr 0.0.0.0:5688 --prometheus-listener-addr 0.0.0.0:1222 --advertise-addr 0.0.0.0:5688 --async-stack-trace verbose --parallelism 4 --total-memory-bytes 8589934592 --role both --meta-address http://0.0.0.0:5690" --frontend-opts=" --listen-addr 0.0.0.0:4566 --advertise-addr 0.0.0.0:4566 --prometheus-listener-addr 0.0.0.0:2222 --health-check-listener-addr 0.0.0.0:6786 --meta-addr http://0.0.0.0:5690" --compactor-opts=" --listen-addr 0.0.0.0:6660 --prometheus-listener-addr 0.0.0.0:1260 --advertise-addr 0.0.0.0:6660 --meta-address http://0.0.0.0:5690"
+    volumes:
+      - ../volumes/risingwave:/risingwave
+    networks:
+      - smile-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5691/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  smile-network:
+    external: true

@@ -1,0 +1,6 @@
+volumes/
+env/*.env
+.env
+backups/
+*.log
+.npmrc

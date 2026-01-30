@@ -1,0 +1,23 @@
+services:
+  frontend-web:
+    container_name: frontend-web
+    build:
+      context: ../../../frontend
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "4001:3000"
+    env_file:
+      - ../env/frontend-web.env
+    networks:
+      - smile-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  smile-network:
+    external: true

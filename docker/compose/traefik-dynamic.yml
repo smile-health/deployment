@@ -1,0 +1,138 @@
+http:
+  routers:
+    auth-router:
+      rule: "PathPrefix(`/auth/`)"
+      service: auth-service
+      entryPoints:
+        - web
+      middlewares:
+        - auth-stripprefix
+        - cors-headers
+
+    main-router:
+      rule: "PathPrefix(`/main/`)"
+      service: main-service
+      entryPoints:
+        - web
+      middlewares:
+        - main-stripprefix
+        - cors-headers
+
+    warehouse-router:
+      rule: "PathPrefix(`/warehouse-report/`)"
+      service: warehouse-service
+      entryPoints:
+        - web
+      middlewares:
+        - warehouse-stripprefix
+        - cors-headers
+
+    core-router:
+      rule: "PathPrefix(`/core/`)"
+      service: core-service
+      entryPoints:
+        - web
+      middlewares:
+        - core-stripprefix
+        - cors-headers
+
+    sync-router:
+      rule: "PathPrefix(`/sync/`)"
+      service: sync-service
+      entryPoints:
+        - web
+      middlewares:
+        - sync-stripprefix
+        - cors-headers
+
+    notification-router:
+      rule: "PathPrefix(`/notification/`)"
+      service: notification-service
+      entryPoints:
+        - web
+      middlewares:
+        - notification-stripprefix
+        - cors-headers
+
+  middlewares:
+    auth-stripprefix:
+      stripPrefix:
+        prefixes:
+          - "/auth"
+
+    main-stripprefix:
+      stripPrefix:
+        prefixes:
+          - "/main"
+
+    warehouse-stripprefix:
+      stripPrefix:
+        prefixes:
+          - "/warehouse-report"
+
+    core-stripprefix:
+      stripPrefix:
+        prefixes:
+          - "/core"
+
+    sync-stripprefix:
+      stripPrefix:
+        prefixes:
+          - "/sync"
+
+    notification-stripprefix:
+      stripPrefix:
+        prefixes:
+          - "/notification"
+
+    cors-headers:
+      headers:
+        accessControlAllowCredentials: true
+        accessControlAllowHeaders:
+          - "Authorization"
+          - "Content-Type"
+          - "fcm_token"
+          - "X-Requested-With"
+          - "device-type"
+          - "timezone"
+        accessControlAllowMethods:
+          - "GET"
+          - "POST"
+          - "PUT"
+          - "DELETE"
+          - "PATCH"
+          - "OPTIONS"
+        accessControlAllowOriginList:
+          - "*"
+        accessControlMaxAge: 3600
+
+  services:
+    auth-service:
+      loadBalancer:
+        servers:
+          - url: "http://auth-service:3000"
+
+    main-service:
+      loadBalancer:
+        servers:
+          - url: "http://main:3000"
+
+    warehouse-service:
+      loadBalancer:
+        servers:
+          - url: "http://warehouse-service:3008"
+
+    core-service:
+      loadBalancer:
+        servers:
+          - url: "http://core:3000"
+
+    sync-service:
+      loadBalancer:
+        servers:
+          - url: "http://sync-service:3000"
+
+    notification-service:
+      loadBalancer:
+        servers:
+          - url: "http://notification:3000"

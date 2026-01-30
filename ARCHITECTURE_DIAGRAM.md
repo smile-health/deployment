@@ -30,8 +30,6 @@ graph TB
 
         subgraph "Backend Services"
             CORE[Core Service<br/>Node.js]
-            IMM[Immunization Service<br/>Node.js]
-            MED[Medicine Service<br/>Node.js]
             AUTH[Auth Service<br/>Node.js]
             MAIN[Main Service<br/>Node.js]
             SYNC[Sync Service<br/>Node.js]
@@ -76,8 +74,6 @@ graph TB
     SB --> API1
 
     API1 --> CORE
-    API1 --> IMM
-    API1 --> MED
     API1 --> AUTH
     API1 --> MAIN
     API1 --> SYNC
@@ -87,8 +83,6 @@ graph TB
     API2 --> AUTH
 
     CORE --> DB1
-    IMM --> DB1
-    MED --> DB1
     AUTH --> DB1
     MAIN --> DB1
     SYNC --> DB1
@@ -99,8 +93,6 @@ graph TB
     KC --> DB2
 
     CORE --> MQ
-    IMM --> MQ
-    MED --> MQ
     AUTH --> MQ
     MAIN --> MQ
     SYNC --> MQ
@@ -170,8 +162,6 @@ sequenceDiagram
 
 ### 3. Backend Services
 - **Core Service**: Central business logic and user management
-- **Immunization Service**: Vaccine tracking and scheduling
-- **Medicine Service**: Pharmaceutical inventory management
 - **Auth Service**: Authentication and authorization
 - **Main Service**: Primary application logic
 - **Sync Service**: Data synchronization between systems

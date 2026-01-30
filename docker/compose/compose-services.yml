@@ -1,0 +1,168 @@
+services:
+  auth-service:
+    container_name: auth-service
+    build:
+      context: ../../../backend/apps/auth-service
+    restart: unless-stopped
+    env_file:
+      - ../env/.env
+      - ../env/auth-service.env
+    networks:
+      - smile-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.auth-service.rule: "PathPrefix(`/auth`)"
+      traefik.http.routers.auth-service.entrypoints: "web"
+      traefik.http.services.auth-service.loadbalancer.server.port: "3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  core:
+    container_name: core
+    build:
+      context: ../../../backend/apps/core
+    restart: unless-stopped
+    env_file:
+      - ../env/.env
+      - ../env/core.env
+    networks:
+      - smile-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.core.rule: "PathPrefix(`/core`)"
+      traefik.http.routers.core.entrypoints: "web"
+      traefik.http.services.core.loadbalancer.server.port: "3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  main:
+    container_name: main
+    build:
+      context: ../../../backend/apps/main
+    restart: unless-stopped
+    env_file:
+      - ../env/.env
+      - ../env/main.env
+    networks:
+      - smile-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.main.rule: "PathPrefix(`/main`)"
+      traefik.http.routers.main.entrypoints: "web"
+      traefik.http.services.main.loadbalancer.server.port: "3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  sync-service:
+    container_name: sync-service
+    build:
+      context: ../../../backend/apps/sync-service
+    restart: unless-stopped
+    env_file:
+      - ../env/.env
+      - ../env/sync-service.env
+    networks:
+      - smile-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.sync-service.rule: "PathPrefix(`/sync`)"
+      traefik.http.routers.sync-service.entrypoints: "web"
+      traefik.http.services.sync-service.loadbalancer.server.port: "3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  warehouse-service:
+    container_name: warehouse-service
+    build:
+      context: ../../../backend/apps/warehouse-service
+    restart: unless-stopped
+    env_file:
+      - ../env/.env
+      - ../env/warehouse-service.env
+    networks:
+      - smile-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.warehouse-service.rule: "PathPrefix(`/warehouse`)"
+      traefik.http.routers.warehouse-service.entrypoints: "web"
+      traefik.http.services.warehouse-service.loadbalancer.server.port: "3008"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3008/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  notification:
+    container_name: notification
+    build:
+      context: ../../../backend/apps/notification
+    restart: unless-stopped
+    env_file:
+      - ../env/.env
+      - ../env/notification.env
+    networks:
+      - smile-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.notification.rule: "PathPrefix(`/notification`)"
+      traefik.http.routers.notification.entrypoints: "web"
+      traefik.http.services.notification.loadbalancer.server.port: "3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  smile-network:
+    external: true

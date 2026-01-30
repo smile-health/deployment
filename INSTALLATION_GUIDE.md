@@ -5,15 +5,16 @@ This guide provides comprehensive step-by-step instructions for installing and c
 ## Table of Contents
 
 1. [Prerequisites](#prerequisites)
-2. [Repository Setup](#repository-setup)
-3. [Quick Start](#quick-start)
-4. [Detailed Installation](#detailed-installation)
-5. [Configuration](#configuration)
-6. [Post-Installation](#post-installation)
-7. [Upgrading](#upgrading)
-8. [Uninstalling](#uninstalling)
-9. [Troubleshooting](#troubleshooting)
-10. [CI/CD Integration](#cicd-integration)
+2. [Connect to the Cluster](#connect-to-the-cluster)
+3. [Repository Setup](#repository-setup)
+4. [Quick Start](#quick-start)
+5. [Detailed Installation](#detailed-installation)
+6. [Configuration](#configuration)
+7. [Post-Installation](#post-installation)
+8. [Upgrading](#upgrading)
+9. [Uninstalling](#uninstalling)
+10. [Troubleshooting](#troubleshooting)
+11. [CI/CD Integration](#cicd-integration)
 
 ## Prerequisites
 
@@ -50,6 +51,138 @@ kubectl get pods -n ingress-nginx
 
 # Check for cert-manager
 kubectl get pods -n cert-manager
+```
+
+## Connect to the Cluster
+
+### Option 1: Local Kubernetes (Docker Desktop, Minikube, etc.)
+
+```bash
+# For Docker Desktop
+kubectl config use-context docker-desktop
+
+# For Minikube
+minikube start
+kubectl config use-context minikube
+
+# For Kind (Kubernetes in Docker)
+kind create cluster --name smile-health
+kubectl config use-context kind-smile-health
+
+# Verify connection
+kubectl cluster-info
+kubectl get nodes
+```
+
+### Option 2: Cloud Provider Clusters
+
+#### AWS EKS
+
+```bash
+# Install AWS CLI and configure credentials
+aws configure
+
+# Install eksctl
+curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+sudo mv /tmp/eksctl /usr/local/bin
+
+# Update kubeconfig
+aws eks update-kubeconfig --region <region> --name <cluster-name>
+
+# Verify connection
+kubectl cluster-info
+```
+
+#### Google GKE
+
+```bash
+# Install gcloud CLI
+curl https://sdk.cloud.google.com | bash
+exec -l $SHELL
+
+# Configure authentication
+gcloud auth login
+gcloud config set project <project-id>
+
+# Get cluster credentials
+gcloud container clusters get-credentials <cluster-name> --region <region>
+
+# Verify connection
+kubectl cluster-info
+```
+
+#### Azure AKS
+
+```bash
+# Install Azure CLI
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+# Login to Azure
+az login
+
+# Set subscription
+az account set --subscription "<subscription-id>"
+
+# Get cluster credentials
+az aks get-credentials --resource-group <resource-group> --name <cluster-name>
+
+# Verify connection
+kubectl cluster-info
+```
+
+### Option 3: Self-Hosted or On-Premise Clusters
+
+```bash
+# Copy kubeconfig file from cluster administrator
+mkdir -p ~/.kube
+cp /path/to/kubeconfig ~/.kube/config
+
+# Or set KUBECONFIG environment variable
+export KUBECONFIG=/path/to/kubeconfig
+
+# Verify connection
+kubectl cluster-info
+kubectl get nodes
+```
+
+### Verify Cluster Access
+
+```bash
+# Check current context
+kubectl config current-context
+
+# List all available contexts
+kubectl config get-contexts
+
+# Test cluster connectivity
+kubectl get pods -A
+kubectl get services -A
+
+# Check cluster resources
+kubectl top nodes
+kubectl describe nodes
+```
+
+### Troubleshooting Connection Issues
+
+```bash
+# If you get "connection refused" error:
+# 1. Check if cluster is running
+minikube status
+# or
+docker ps
+
+# 2. Restart cluster if needed
+minikube start
+# or
+docker start <cluster-container>
+
+# 3. Check kubeconfig
+kubectl config view
+
+# 4. Reset kubeconfig (if needed)
+rm ~/.kube/config
+# Then re-run the connection steps above
 ```
 
 ## Repository Setup
@@ -633,8 +766,6 @@ kubectl exec -it deployment/smile-health-mysql -- mysqldump -u root -p --all-dat
 ```bash
 # Disable specific components
 helm upgrade smile-health ./smile-health \
-  --set backend.immunization.enabled=false \
-  --set backend.medicine.enabled=false \
   --set frontend.storybook.enabled=false
 
 # Remove dependencies

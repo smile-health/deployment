@@ -1,0 +1,10 @@
+include:
+  - path:
+      - compose-tools.yml
+      - compose-services.yml
+      - compose-frontend.yml
+      # - compose-data.yml
+
+networks:
+  smile-network:
+    driver: bridge

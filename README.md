@@ -5,7 +5,7 @@ This Helm chart deploys the Smile Health application, including all backend serv
 ## Architecture
 
 The chart deploys:
-- **Backend Services**: Core, Immunization, Medicine, Auth, Main, Sync, Warehouse, Main API, Warehouse API, Notification
+- **Backend Services**: Core, Auth, Main, Sync, Warehouse, Main API, Warehouse API, Notification
 - **Frontend Applications**: Web, Storybook, WMS
 - **Infrastructure**: MySQL, Redis, RabbitMQ, Keycloak (with MySQL backend)
 

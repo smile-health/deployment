@@ -1,0 +1,179 @@
+services:
+  mysql:
+    container_name: mysql
+    image: mysql:8
+    restart: always
+    ports:
+      - "4306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-smile_health}
+      MYSQL_USER: ${MYSQL_USER:-smileuser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-smilepass}
+    env_file:
+      - ../env/.env
+    volumes:
+      - ./my.cnf:/etc/mysql/conf.d/my.cnf
+      - ../volumes/mysql:/var/lib/mysql
+    networks:
+      - smile-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    container_name: redis
+    image: redis:7
+    restart: always
+    ports:
+      - "4379:6379"
+    env_file:
+      - ../env/.env
+    volumes:
+      - ../volumes/redis:/data
+    networks:
+      - smile-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:4-management-alpine
+    restart: always
+    ports:
+      - "4672:5672"
+      - "4673:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-admin}
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbit frame_max 1048576
+    env_file:
+      - ../env/.env
+    volumes:
+      - ../volumes/rabbitmq:/var/lib/rabbitmq
+      - ../volumes/rabbitmq-logs:/var/log/rabbitmq
+    networks:
+      - smile-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  keycloak-postgres:
+    container_name: keycloak-postgres
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
+    env_file:
+      - ../env/.env
+    volumes:
+      - ../volumes/keycloak-postgres:/var/lib/postgresql/data
+    networks:
+      - smile-network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "keycloak"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  keycloak:
+    container_name: keycloak
+    image: quay.io/keycloak/keycloak:23.0
+    restart: unless-stopped
+    ports:
+      - "4080:8080"
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HEALTH_ENABLED: true
+      KC_METRICS_ENABLED: true
+    env_file:
+      - ../env/.env
+    volumes:
+      - ./realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    command: start-dev --import-realm
+    networks:
+      - smile-network
+    depends_on:
+      keycloak-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  minio:
+    container_name: minio
+    image: quay.io/minio/minio:RELEASE.2024-09-22T00-33-43Z
+    restart: always
+    ports:
+      - "4900:9000"
+      - "4901:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    env_file:
+      - ../env/.env
+    volumes:
+      - ../volumes/minio:/data
+    command: minio server /data --console-address ":9001"
+    networks:
+      - smile-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  traefik:
+    container_name: traefik
+    image: traefik:v3.0
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    environment:
+      TRAEFIK_API_INSECURE: "true"
+      TRAEFIK_PROVIDERS_DOCKER: "true"
+      TRAEFIK_PROVIDERS_DOCKER_EXPOSEDBYDEFAULT: "false"
+      TRAEFIK_METRICS_PROMETHEUS: "true"
+      TRAEFIK_METRICS_PROMETHEUS_ADDENTRYPOINTSLABELS: "true"
+      TRAEFIK_METRICS_PROMETHEUS_ADDROUTERSLABELS: "true"
+      TRAEFIK_METRICS_PROMETHEUS_ADDSERVICESLABELS: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik-dynamic.yml:/etc/traefik/traefik-dynamic.yml:ro
+    networks:
+      - smile-network
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  smile-network:
+    external: true
