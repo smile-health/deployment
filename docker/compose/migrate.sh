@@ -15,24 +15,29 @@ case "$COMMAND" in
     echo ""
     
     echo "→ Migrating core..."
-    docker compose exec -T core npm run db:migrate
+    docker compose -f compose-services.yml -f compose-tools.yml exec -T core npm run db:migrate
     echo "✓ core migration complete"
+    echo ""
+
+    echo "→ Seeding main..."
+    docker compose -f compose-services.yml -f compose-tools.yml exec -T main npm run view:migrate
+    echo "✓ main seeding complete"
     echo ""
     
     echo "→ Migrating main..."
-    docker compose exec -T main npm run db:migrate
+    docker compose -f compose-services.yml -f compose-tools.yml exec -T main npm run db:migrate
     echo "✓ main migration complete"
     echo ""
     
     echo "→ Migrating sync-service..."
-    docker compose exec -T sync-service npm run db:migrate
+    docker compose -f compose-services.yml -f compose-tools.yml  exec -T sync-service npm run db:migrate
     echo "✓ sync-service migration complete"
     echo ""
     
-    echo "→ Migrating notification..."
-    docker compose exec -T notification npm run migrate
-    echo "✓ notification migration complete"
-    echo ""
+    # echo "→ Migrating notification..."
+    # docker compose -f compose-services.yml -f compose-tools.yml exec -T notification npm run migrate
+    # echo "✓ notification migration complete"
+    # echo ""
     
     echo "=========================================="
     echo "✓ All migrations completed!"
@@ -44,12 +49,12 @@ case "$COMMAND" in
     echo ""
     
     echo "→ Seeding core..."
-    docker compose exec -T core npm run db:seed -- --seed
+    docker compose -f compose-services.yml -f compose-tools.yml exec -T core npm run db:seed -- --seed
     echo "✓ core seeding complete"
     echo ""
     
     echo "→ Seeding main..."
-    docker compose exec -T main npm run view:migrate
+    docker compose -f compose-services.yml -f compose-tools.yml exec -T main npm run view:migrate
     echo "✓ main seeding complete"
     echo ""
     
