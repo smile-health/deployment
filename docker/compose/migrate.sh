@@ -2,9 +2,6 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKEND_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")/backend"
-
 echo "=========================================="
 echo "Database Migration & Seeding"
 echo "=========================================="
@@ -18,22 +15,22 @@ case "$COMMAND" in
     echo ""
     
     echo "→ Migrating core..."
-    cd "$BACKEND_DIR/apps/core" && npm run db:migrate
+    docker compose exec -T core npm run db:migrate
     echo "✓ core migration complete"
     echo ""
     
     echo "→ Migrating main..."
-    cd "$BACKEND_DIR/apps/main" && npm run db:migrate
+    docker compose exec -T main npm run db:migrate
     echo "✓ main migration complete"
     echo ""
     
     echo "→ Migrating sync-service..."
-    cd "$BACKEND_DIR/apps/sync-service" && npm run db:migrate
+    docker compose exec -T sync-service npm run db:migrate
     echo "✓ sync-service migration complete"
     echo ""
     
     echo "→ Migrating notification..."
-    cd "$BACKEND_DIR/apps/notification" && npm run migrate
+    docker compose exec -T notification npm run migrate
     echo "✓ notification migration complete"
     echo ""
     
@@ -47,12 +44,12 @@ case "$COMMAND" in
     echo ""
     
     echo "→ Seeding core..."
-    cd "$BACKEND_DIR/apps/core" && npm run db:seed -- --seed
+    docker compose exec -T core npm run db:seed -- --seed
     echo "✓ core seeding complete"
     echo ""
     
     echo "→ Seeding main..."
-    cd "$BACKEND_DIR/apps/main" && npm run view:migrate
+    docker compose exec -T main npm run view:migrate
     echo "✓ main seeding complete"
     echo ""
     
