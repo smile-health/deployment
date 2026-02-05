@@ -11,6 +11,7 @@ USE_GHCR=false
 COMPOSE_BAKE=true
 BUILD_BACKEND=true
 BUILD_FRONTEND=true
+INIT_MODE=false
 
 for arg in "$@"; do
     case $arg in
@@ -28,22 +29,33 @@ for arg in "$@"; do
             BUILD_BACKEND=false
             BUILD_FRONTEND=true
             ;;
+        --init)
+            INIT_MODE=true
+            ;;
     esac
 done
+
+INIT_MARKER="$VOLUMES_DIR/.setup-init-done"
 
 echo "=========================================="
 echo "Smile Health Docker Compose Setup"
 if [ "$REBUILD" = true ]; then
     echo "(Rebuild Mode: Images will be rebuilt)"
 fi
+if [ "$INIT_MODE" = true ]; then
+    echo "(Init Mode: Will run database and Keycloak initialization)"
+elif [ ! -f "$INIT_MARKER" ]; then
+    echo "(First run detected - will run initialization)"
+    INIT_MODE=true
+fi
 echo "=========================================="
 echo ""
 
 echo "Step 1: Creating environment files..."
-if [ ! -f "$DOCKER_DIR/.env" ]; then
+if [ ! -f "$DOCKER_DIR/env/.env" ]; then
     if [ -f "$ENV_DIR/.env.example" ]; then
-        cp "$ENV_DIR/.env.example" "$DOCKER_DIR/.env"
-        echo "✓ Created $DOCKER_DIR/.env"
+        cp "$ENV_DIR/.env.example" "$DOCKER_DIR/env/.env"
+        echo "✓ Created $DOCKER_DIR/env/.env"
     fi
 fi
 
@@ -74,7 +86,7 @@ fi
 echo ""
 
 echo "Step 2: Creating volume directories..."
-mkdir -p "$VOLUMES_DIR"/{mysql,redis,rabbitmq,rabbitmq-logs,keycloak-postgres,minio,zookeeper,zookeeper-logs,kafka,clickhouse,clickhouse-logs,risingwave}
+mkdir -p "$VOLUMES_DIR"/{mysql,redis,rabbitmq,rabbitmq-logs,minio,zookeeper,zookeeper-logs,kafka,clickhouse,clickhouse-logs,risingwave}
 echo "✓ Volume directories created"
 echo ""
 
@@ -104,7 +116,104 @@ if [ "$BUILD_BACKEND" = true ]; then
         echo ""
     fi
 
-    echo "Step 4: Starting all services..."
+    if [ "$INIT_MODE" = true ]; then
+        echo "Step 4: Starting MySQL for initialization..."
+        docker compose -f "$SCRIPT_DIR/compose-tools.yml" up -d mysql
+        echo "  ✓ MySQL container started"
+        echo ""
+
+        source "$ENV_DIR/.env"
+
+        MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-rootpassword}"
+        MYSQL_USER="${MYSQL_USER:-smileuser}"
+        MYSQL_PASSWORD="${MYSQL_PASSWORD:-smilepass}"
+
+        echo "  - Waiting for MySQL to be ready..."
+        for i in {1..30}; do
+            if docker exec mysql mysqladmin ping -h localhost --silent 2>/dev/null; then
+                echo "  ✓ MySQL is ready"
+                break
+            fi
+            if [ $i -eq 30 ]; then
+                echo "  ⚠ MySQL health check timed out"
+                exit 1
+            fi
+            sleep 2
+        done
+
+        echo "Step 4.5: Creating additional databases..."
+
+        echo "  - Creating smile_health_mapping database..."
+        docker exec mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS smile_health_mapping CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null || echo "  ⚠ Failed to create smile_health_mapping"
+        docker exec mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "GRANT ALL PRIVILEGES ON smile_health_mapping.* TO '$MYSQL_USER'@'%';" 2>/dev/null || echo "  ⚠ Failed to grant privileges on smile_health_mapping"
+        echo "  ✓ smile_health_mapping database created"
+
+        echo "  - Creating smile_health_notification database..."
+        docker exec mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS smile_health_notification CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null || echo "  ⚠ Failed to create smile_health_notification"
+        docker exec mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "GRANT ALL PRIVILEGES ON smile_health_notification.* TO '$MYSQL_USER'@'%';" 2>/dev/null || echo "  ⚠ Failed to grant privileges on smile_health_notification"
+        echo "  ✓ smile_health_notification database created"
+
+        echo "  - Creating keycloak database..."
+        docker exec mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS keycloak CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null || echo "  ⚠ Failed to create keycloak"
+        docker exec mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "CREATE USER IF NOT EXISTS 'keycloak'@'%' IDENTIFIED BY '${KEYCLOAK_DB_PASSWORD:-keycloak}';" 2>/dev/null || echo "  ⚠ Failed to create keycloak user"
+        docker exec mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "GRANT ALL PRIVILEGES ON keycloak.* TO 'keycloak'@'%';" 2>/dev/null || echo "  ⚠ Failed to grant privileges on keycloak"
+        echo "  ✓ keycloak database created"
+
+        docker exec mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "FLUSH PRIVILEGES;" 2>/dev/null
+        echo "  ✓ Privileges flushed"
+        echo ""
+
+        echo "Step 4.6: Importing Keycloak realm using kc.sh import..."
+
+        # Run Keycloak import using the import command before starting services
+        # MSYS_NO_PATHCONV=1 prevents Git Bash from converting paths
+        MSYS_NO_PATHCONV=1 docker run --rm \
+            --name keycloak-import \
+            --network smile-network \
+            -v "$SCRIPT_DIR/smile-realm.json:/opt/keycloak/data/import/smile-realm.json:ro" \
+            -e KC_DB=mysql \
+            -e KC_DB_URL=jdbc:mysql://mysql:3306/keycloak \
+            -e KC_DB_USERNAME=keycloak \
+            -e KC_DB_PASSWORD="${KEYCLOAK_DB_PASSWORD:-keycloak}" \
+            -e KEYCLOAK_ADMIN="${KEYCLOAK_ADMIN:-admin}" \
+            -e KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin}" \
+            quay.io/keycloak/keycloak:25.0.6 \
+            import --file /opt/keycloak/data/import/smile-realm.json --override true 2>/dev/null || echo "  ⚠ Realm import may have failed or realm already exists"
+
+        echo "  ✓ Keycloak import command completed"
+
+        echo "  - Importing Keycloak users..."
+        MSYS_NO_PATHCONV=1 docker run --rm \
+            --name keycloak-users-import \
+            --network smile-network \
+            -v "$SCRIPT_DIR/smile-users.json:/opt/keycloak/data/import/smile-users.json:ro" \
+            -e KC_DB=mysql \
+            -e KC_DB_URL=jdbc:mysql://mysql:3306/keycloak \
+            -e KC_DB_USERNAME=keycloak \
+            -e KC_DB_PASSWORD="${KEYCLOAK_DB_PASSWORD:-keycloak}" \
+            -e KEYCLOAK_ADMIN="${KEYCLOAK_ADMIN:-admin}" \
+            -e KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin}" \
+            quay.io/keycloak/keycloak:25.0.6 \
+            import --file /opt/keycloak/data/import/smile-users.json --override true 2>/dev/null || echo "  ⚠ Users import may have failed or users already exist"
+        echo "  ✓ Keycloak users import command completed"
+        echo ""
+
+        # Stop MySQL to let compose manage it
+        docker compose -f "$SCRIPT_DIR/compose-tools.yml" stop mysql
+        echo "  ✓ MySQL stopped (will be restarted with full compose)"
+        echo ""
+
+        # Mark initialization as complete
+        touch "$INIT_MARKER"
+        echo "✓ Initialization marked as complete"
+        echo ""
+    else
+        echo "  ℹ Skipping database and Keycloak initialization (already initialized)"
+        echo "  Run with --init flag to force initialization"
+        echo ""
+    fi
+
+    echo "Step 5: Starting all services..."
     # docker compose -f "$SCRIPT_DIR/compose-tools.yml" -f "$SCRIPT_DIR/compose-data.yml" -f "$SCRIPT_DIR/compose-services.yml" -f "$SCRIPT_DIR/compose-frontend.yml" up -d
 
     SERVICES_FILE="compose-services.yml"
@@ -121,42 +230,6 @@ if [ "$BUILD_BACKEND" = true ]; then
 
     echo "  - Waiting for services to be healthy (30-60 seconds)..."
     sleep 10
-    echo ""
-
-    echo "Step 4.5: Creating additional databases..."
-    source "$ENV_DIR/.env"
-    
-    MYSQL_HOST="localhost"
-    MYSQL_PORT="4306"
-    MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-rootpassword}"
-    MYSQL_USER="${MYSQL_USER:-smileuser}"
-    MYSQL_PASSWORD="${MYSQL_PASSWORD:-smilepass}"
-    
-    echo "  - Waiting for MySQL to be ready..."
-    for i in {1..30}; do
-        if docker exec mysql mysqladmin ping -h localhost --silent 2>/dev/null; then
-            echo "  ✓ MySQL is ready"
-            break
-        fi
-        if [ $i -eq 30 ]; then
-            echo "  ⚠ MySQL health check timed out"
-            exit 1
-        fi
-        sleep 2
-    done
-    
-    echo "  - Creating smile_health_mapping database..."
-    docker exec mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS smile_health_mapping CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null || echo "  ⚠ Failed to create smile_health_mapping"
-    docker exec mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "GRANT ALL PRIVILEGES ON smile_health_mapping.* TO '$MYSQL_USER'@'%';" 2>/dev/null || echo "  ⚠ Failed to grant privileges on smile_health_mapping"
-    echo "  ✓ smile_health_mapping database created"
-    
-    echo "  - Creating smile_health_notification database..."
-    docker exec mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS smile_health_notification CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null || echo "  ⚠ Failed to create smile_health_notification"
-    docker exec mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "GRANT ALL PRIVILEGES ON smile_health_notification.* TO '$MYSQL_USER'@'%';" 2>/dev/null || echo "  ⚠ Failed to grant privileges on smile_health_notification"
-    echo "  ✓ smile_health_notification database created"
-    
-    docker exec mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "FLUSH PRIVILEGES;" 2>/dev/null
-    echo "  ✓ Privileges flushed"
     echo ""
 
     echo "=========================================="
@@ -265,7 +338,7 @@ if [ "$BUILD_FRONTEND" = true ]; then
                 sleep 2
             fi
         done
-        
+
         if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
             echo "⚠ Frontend service health check timed out"
         fi

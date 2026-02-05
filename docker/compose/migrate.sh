@@ -34,6 +34,11 @@ case "$COMMAND" in
     echo "✓ sync-service migration complete"
     echo ""
     
+    echo "→ Seeding first user..."
+    docker compose -f compose-services.yml -f compose-tools.yml  exec -T core bun ./src/cli.ts migrate-first-users
+    echo "✓ first user seeding complete"
+    echo ""
+    
     # echo "→ Migrating notification..."
     # docker compose -f compose-services.yml -f compose-tools.yml exec -T notification npm run migrate
     # echo "✓ notification migration complete"
@@ -51,6 +56,11 @@ case "$COMMAND" in
     echo "→ Seeding core..."
     docker compose -f compose-services.yml -f compose-tools.yml exec -T core npm run db:seed -- --seed
     echo "✓ core seeding complete"
+    echo ""
+
+    echo "→ Seeding first user..."
+    docker compose -f compose-services.yml -f compose-tools.yml  exec -T core bun ./src/cli.ts migrate-first-users
+    echo "✓ first user seeding complete"
     echo ""
     
     echo "→ Seeding main..."
