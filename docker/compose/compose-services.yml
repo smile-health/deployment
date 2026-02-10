@@ -9,6 +9,8 @@ services:
       - ../env/auth-service.env
     networks:
       - smile-network
+    expose:
+      - ${PORT-3000}
     depends_on:
       mysql:
         condition: service_healthy
@@ -22,7 +24,15 @@ services:
       traefik.http.routers.auth-service.entrypoints: "web"
       traefik.http.services.auth-service.loadbalancer.server.port: "3000"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:${PORT-3000}/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -38,6 +48,8 @@ services:
       - ../env/core.env
     networks:
       - smile-network
+    expose:
+      - ${PORT-3000}
     depends_on:
       mysql:
         condition: service_healthy
@@ -49,7 +61,15 @@ services:
       traefik.http.routers.core.entrypoints: "web"
       traefik.http.services.core.loadbalancer.server.port: "3000"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:${PORT-3000}/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -65,6 +85,8 @@ services:
       - ../env/main.env
     networks:
       - smile-network
+    expose:
+      - ${PORT-3000}
     depends_on:
       mysql:
         condition: service_healthy
@@ -78,7 +100,15 @@ services:
       traefik.http.routers.main.entrypoints: "web"
       traefik.http.services.main.loadbalancer.server.port: "3000"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:${PORT-3000}/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -94,6 +124,8 @@ services:
       - ../env/sync-service.env
     networks:
       - smile-network
+    expose:
+      - ${PORT-3000}
     depends_on:
       mysql:
         condition: service_healthy
@@ -105,7 +137,15 @@ services:
       traefik.http.routers.sync-service.entrypoints: "web"
       traefik.http.services.sync-service.loadbalancer.server.port: "3000"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:${PORT-3000}/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -121,6 +161,8 @@ services:
       - ../env/warehouse-service.env
     networks:
       - smile-network
+    expose:
+      - ${PORT-3000}
     depends_on:
       mysql:
         condition: service_healthy
@@ -132,7 +174,15 @@ services:
       traefik.http.routers.warehouse-service.entrypoints: "web"
       traefik.http.services.warehouse-service.loadbalancer.server.port: "3008"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3008/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3008/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -148,6 +198,8 @@ services:
       - ../env/notification.env
     networks:
       - smile-network
+    expose:
+      - ${PORT-3000}
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -157,7 +209,15 @@ services:
       traefik.http.routers.notification.entrypoints: "web"
       traefik.http.services.notification.loadbalancer.server.port: "3000"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:${PORT-3000}/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3

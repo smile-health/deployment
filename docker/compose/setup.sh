@@ -320,7 +320,7 @@ if [ "$BUILD_FRONTEND" = true ]; then
     echo ""
 
     echo "Waiting for frontend service to be healthy..."
-    FRONTEND_CONTAINER=$(docker compose -f "$SCRIPT_DIR/compose-frontend.yml" ps -q frontend-web 2>/dev/null || echo "")
+    FRONTEND_CONTAINER=$(docker compose --env-file "$ENV_DIR/.env" --env-file "$FRONTEND_ENV" -f "$SCRIPT_DIR/compose-frontend.yml" ps -q frontend-web 2>/dev/null || echo "")
 
     if [ -z "$FRONTEND_CONTAINER" ]; then
         echo "⚠ Frontend container not found, skipping health check"
