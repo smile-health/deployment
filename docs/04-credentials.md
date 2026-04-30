@@ -1,4 +1,4 @@
-# Seeded Credentials — smile-health (Dev)
+# Credentials — smile-health (Dev)
 
 ## Application Login
 
@@ -11,6 +11,7 @@ assigned to all 14 active workspaces/programs.
 | `admin` | `Admin1234!` | admin@smile.co.id | `93b9f3dc-b704-4fcb-9a2d-f5309efafa46` |
 
 Login endpoint:
+
 ```bash
 curl -X POST https://smile-health.badr.co.id/auth/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
@@ -23,11 +24,29 @@ curl -X POST https://smile-health.badr.co.id/auth/login \
 
 | Service | Host | Database | User | Password |
 |---------|------|----------|------|----------|
-| MySQL (in-cluster) | `mysql.smile-health.svc.cluster.local:3306` | `dev_smile_health` | `devel` | `niatikhla5` |
-| MySQL (in-cluster) | `mysql.smile-health.svc.cluster.local:3306` | `dev_smile_health_mapping` | `devel` | `niatikhla5` |
-| MySQL (in-cluster) | `mysql.smile-health.svc.cluster.local:3306` | `dev_smile_health_notification` | `devel` | `niatikhla5` |
+| MySQL | `mysql.smile-health.svc.cluster.local:3306` | `dev_smile_health` | `devel` | `niatikhla5` |
+| MySQL | `mysql.smile-health.svc.cluster.local:3306` | `dev_smile_health_mapping` | `devel` | `niatikhla5` |
+| MySQL | `mysql.smile-health.svc.cluster.local:3306` | `dev_smile_health_notification` | `devel` | `niatikhla5` |
+| MySQL root | `mysql.smile-health.svc.cluster.local:3306` | — | `root` | `niatikhla5` |
 | Redis | `redis-master.smile-health.svc.cluster.local:6379` | — | — | — |
 | RabbitMQ | `rabbitmq.smile-health.svc.cluster.local:5672` | — | `devel` | `niatikhla5` |
+
+Connect to MySQL from kubectl:
+
+```bash
+KUBECONFIG=~/.kube/config.badr-dev kubectl exec -it -n smile-health statefulset/mysql -- \
+  mysql -u devel -pniatikhla5 dev_smile_health
+```
+
+---
+
+## Infrastructure Access
+
+| Host | Purpose | SSH |
+|------|---------|-----|
+| 10.10.0.3 | Nginx reverse proxy | `sshpass -p "niatikhla5" ssh -p 60322 devel@10.10.0.3` |
+| 10.10.0.10 | Kubernetes node (kube1) | `ssh devel@10.10.0.10` |
+| 10.10.0.11 | Kubernetes node (kube2, PV storage) | `ssh devel@10.10.0.11` |
 
 ---
 
@@ -40,6 +59,14 @@ curl -X POST https://smile-health.badr.co.id/auth/login \
 | Admin password | `keycloak` |
 | Realm | `smile` |
 | Client ID | `smile` |
+
+Get admin token:
+
+```bash
+TOKEN=$(curl -s -X POST "https://keycloak.badr.co.id/realms/master/protocol/openid-connect/token" \
+  -d "client_id=admin-cli&username=admin&password=keycloak&grant_type=password" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+```
 
 ---
 
@@ -54,41 +81,5 @@ curl -X POST https://smile-health.badr.co.id/auth/login \
 | Account | https://smile-health.badr.co.id/account/ |
 | Warehouse | https://smile-health.badr.co.id/warehouse-report/ |
 | Sync | https://smile-health.badr.co.id/sync/ |
-| Auth Swagger UI | https://smile-health.badr.co.id/auth/ui |
-| Core Swagger UI | https://smile-health.badr.co.id/core/ui |
-
----
-
-## Seeded Entity
-
-| Field | Value |
-|-------|-------|
-| ID | 37 |
-| Code | 1031151 |
-| Name | PUSKESMAS BOGOR SELATAN |
-| Type | 3 |
-| Province | 32 (Jawa Barat) |
-| Regency | 3271 (Kota Bogor) |
-
----
-
-## Active Programs (Workspaces)
-
-All seeded users and the entity above are assigned to these 14 programs:
-
-| ID | Key | Name |
-|----|-----|------|
-| 1 | dengue_beneficiaries | DENGUE |
-| 2 | immunization_beneficiaries | IMUNISASI |
-| 3 | malaria | MALARIA |
-| 4 | tb | TB |
-| 5 | hiv | HIV |
-| 9 | bmhp-skrining | PKG |
-| 12 | hepatitis | HEPATITIS |
-| 13 | keswa | KESEHATAN JIWA |
-| 14 | frambusia | FRAMBUSIA |
-| 15 | filariasis | FILARIASIS |
-| 16 | diare | DIARE |
-| 17 | kusta | KUSTA |
-| 18 | kesga | KESEHATAN KELUARGA |
-| 19 | kesling | KESEHATAN LINGKUNGAN |
+| Auth Swagger | https://smile-health.badr.co.id/auth/ui |
+| Core Swagger | https://smile-health.badr.co.id/core/ui |
