@@ -15,7 +15,7 @@ export KUBECONFIG
 
 if [ ! -f "$CHART" ]; then
   echo "ERROR: Patched helm chart not found at $CHART"
-  echo "See docs/deployment-guide.md for how to obtain it."
+  echo "See docs/06-helm-structure.md for details."
   exit 1
 fi
 
