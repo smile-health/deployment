@@ -1,0 +1,95 @@
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: smile-health-vs
+  namespace: smile-health
+spec:
+  gateways:
+    - istio-system/badr-gateway
+  hosts:
+    - smile-health.badr.co.id
+  http:
+    - match:
+        - uri:
+            prefix: /auth/
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: smile-health-auth
+            port:
+              number: 80
+    - corsPolicy:
+        allowCredentials: true
+        allowHeaders:
+          - Authorization
+          - Content-Type
+          - fcm_token
+          - X-Requested-With
+          - device-type
+          - timezone
+          - accept-language
+          - x-program-id
+          - workspace-id
+        allowMethods:
+          - POST
+          - GET
+          - OPTIONS
+          - PUT
+          - DELETE
+        allowOrigin:
+          - https://smile-health.badr.co.id
+        exposeHeaders:
+          - Authorization
+          - Filename
+        maxAge: 24h
+      match:
+        - uri:
+            prefix: /main/
+        - uri:
+            prefix: /account/
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: smile-health-main
+            port:
+              number: 80
+    - match:
+        - uri:
+            prefix: /warehouse-report/
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: smile-health-warehouse
+            port:
+              number: 80
+    - match:
+        - uri:
+            prefix: /core/
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: smile-health-core
+            port:
+              number: 80
+    - match:
+        - uri:
+            prefix: /sync/
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: smile-health-sync
+            port:
+              number: 80
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: smile-health-frontend
+            port:
+              number: 80

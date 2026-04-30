@@ -1,0 +1,56 @@
+replicaCount: 1
+
+app:
+  name: smile-health-frontend
+  environment: dev
+  group: smile
+
+  image:
+    registry: ghcr.io
+    repository: smile-health/frontend/web
+    pullPolicy: Always
+    tag: "main"
+    command: node apps/web/server.js
+  ports:
+    - name: http-port
+      containerPort: 3000
+      protocol: TCP
+
+imagePullSecrets:
+  - name: ghcr-secret
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: false
+  annotations: {}
+  name: "default"
+
+podAnnotations:
+  cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+
+podSecurityContext: {}
+securityContext: {}
+
+service:
+  type: ClusterIP
+  ports:
+    - name: http
+      protocol: TCP
+      targetPort: http-port
+      port: 80
+
+resources: {}
+livenessProbe: null
+readinessProbe: null
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 1
+  targetCPUUtilizationPercentage: 75
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

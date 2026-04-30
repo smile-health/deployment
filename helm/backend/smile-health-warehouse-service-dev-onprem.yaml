@@ -1,0 +1,62 @@
+replicaCount: 1
+
+app:
+  name: smile-health-warehouse
+  environment: dev
+  group: smile
+
+  image:
+    registry: ghcr.io
+    repository: smile-health/backend/warehouse-service
+    pullPolicy: Always
+    tag: "main"
+    command: |-
+      printenv > .env && bun run src/server.ts
+  ports:
+    - name: http-port
+      containerPort: 3000
+      protocol: TCP
+  envFrom:
+    - secretRef:
+        name: common-secret
+    - secretRef:
+        name: warehouse-secret
+
+imagePullSecrets:
+  - name: ghcr-secret
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: false
+  annotations: {}
+  name: "default"
+
+podAnnotations:
+  cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+
+podSecurityContext: {}
+securityContext: {}
+
+service:
+  type: ClusterIP
+  ports:
+    - name: http
+      protocol: TCP
+      targetPort: http-port
+      port: 80
+
+resources: {}
+livenessProbe: null
+readinessProbe: null
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 1
+  targetCPUUtilizationPercentage: 75
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
