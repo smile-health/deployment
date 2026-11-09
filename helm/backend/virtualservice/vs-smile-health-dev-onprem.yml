@@ -57,6 +57,16 @@ spec:
               number: 80
     - match:
         - uri:
+            prefix: /wms/
+      rewrite:
+        uri: /api/v1/
+      route:
+        - destination:
+            host: smile-health-wms-encore
+            port:
+              number: 80
+    - match:
+        - uri:
             prefix: /warehouse-report/
       rewrite:
         uri: /
